@@ -28,7 +28,6 @@
   .pill b{color:var(--ink);font-weight:650}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--good);animation:pulse 2s infinite}
   .dot.err{background:var(--bad);animation:none}
-  .dot.demo{background:var(--warn);animation:none}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}70%{box-shadow:0 0 0 7px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
   button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12.5px;transition:background .15s,border-color .15s}
   button:hover{background:var(--soft)}
@@ -41,7 +40,20 @@
   .banner{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:12px;margin-bottom:14px;font-size:13.5px;border:1px solid}
   .banner.show{display:flex}
   .banner.err{background:color-mix(in srgb,var(--bad) 8%,var(--panel));border-color:color-mix(in srgb,var(--bad) 30%,var(--line))}
-  .banner.demo{background:color-mix(in srgb,var(--warn) 9%,var(--panel));border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+
+  /* Empty state */
+  .empty{display:none;position:relative;overflow:hidden;margin-bottom:14px;padding:28px 28px 26px;
+         background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--accent) 12%,var(--panel)) 0%,var(--panel) 55%)}
+  .empty.show{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+  .empty .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:650;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
+  .empty .kicker i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.6s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .empty h3{font-size:26px;letter-spacing:-.025em;margin:10px 0 8px;font-weight:750;line-height:1.15}
+  .empty p{margin:0;color:var(--muted);max-width:52ch}
+  .clock{text-align:right}
+  .clock .t{font-size:44px;font-weight:750;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+  .clock .l{color:var(--muted);font-size:12.5px;margin-top:6px}
+  @media (max-width:640px){ .empty.show{grid-template-columns:1fr} .clock{text-align:left} .clock .t{font-size:36px} }
 
   /* Cards */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px}
@@ -135,7 +147,19 @@
     </div>
   </header>
 
-  <div class="banner" id="banner"><span id="bannerText"></span><button id="bannerBtn"></button></div>
+  <div class="banner" id="banner"><span id="bannerText"></span></div>
+
+  <section class="card empty" id="empty">
+    <div>
+      <div class="kicker"><i></i><span id="emptyKicker">Waiting for first results</span></div>
+      <h3 id="emptyTitle">Polls start reporting at 8:00 p.m.</h3>
+      <p id="emptyText">Voting runs 10 a.m. to 8 p.m. today. Unofficial results begin posting once voting places close, and this page checks for new numbers every minute.</p>
+    </div>
+    <div class="clock">
+      <div class="t" id="emptyClock">—</div>
+      <div class="l" id="emptyClockLabel">until polls close</div>
+    </div>
+  </section>
 
   <section class="stats">
     <div class="card stat">
@@ -194,17 +218,14 @@
 
 <script>
 (() => {
-  const FEED = 'https://mediaresults.toronto.ca/results/unofficialresult-wardbyward.json';
+  // Served via Netlify proxy (see _redirects) to avoid CORS; the City's server doesn't send Access-Control-Allow-Origin.
+  const FEED = '/api/results';
   const LIVE_MS = 60000;
-  const DEMO_MS = 5000;
   const PALETTE = ['#2563eb','#e11d48','#059669','#f59e0b','#7c3aed','#0891b2','#db2777','#65a30d'];
   const GRAY = '#94a3b8';
-
-  // Ward metadata for demo mode: [num, name, polls, totalVoters]
-  const WARDS = [[1,'Etobicoke North',46,78411],[2,'Etobicoke Centre',67,97554],[3,'Etobicoke-Lakeshore',82,116485],[4,'Parkdale-High Park',67,88529],[5,'York South-Weston',62,83515],[6,'York Centre',50,79015],[7,'Humber River-Black Creek',45,73832],[8,'Eglinton-Lawrence',61,89581],[9,'Davenport',53,84706],[10,'Spadina-Fort York',80,123597],[11,'University-Rosedale',72,90868],[12,"Toronto-St. Paul's",58,95032],[13,'Toronto Centre',78,101769],[14,'Toronto-Danforth',48,85786],[15,'Don Valley West',49,76936],[16,'Don Valley East',62,70080],[17,'Don Valley North',60,81623],[18,'Willowdale',56,84671],[19,'Beaches-East York',53,85048],[20,'Scarborough Southwest',61,82427],[21,'Scarborough Centre',49,80557],[22,'Scarborough-Agincourt',47,75224],[23,'Scarborough North',37,66760],[24,'Scarborough-Guildwood',48,72345],[25,'Scarborough-Rouge Park',40,79420]];
-  // Fictional names so demo numbers can never be mistaken for real results
-  const DEMO_NAMES = ['Avery Lindqvist','Marcus Oyelaran','Priya Ramaswamy','Theo Castellanos','Dana Whitfield','Kenji Arakawa','Sofia Marchetti','Rowan Ellery','Imogen Batista','Felix Achterberg','Nadia Kowalczyk','Owen Pritchard'];
-  const DEMO_WEIGHTS = [.34,.30,.13,.08,.045,.03,.02,.015,.012,.01,.008,.006];
+  // Voting day: Monday, Oct 26, 2026 — polls open 10 a.m., close 8 p.m. Toronto time (EDT, UTC−4)
+  const POLLS_CLOSE = new Date('2026-10-26T20:00:00-04:00');
+  const TZ = 'America/Toronto';
 
   const $ = s => document.querySelector(s);
   const fmt = n => Math.round(n).toLocaleString('en-CA');
@@ -213,8 +234,8 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   let state = null, lastSeq = null, prevVotes = new Map();
-  let mode = 'live', showAll = false, selWard = null;
-  let nextAt = 0, busy = false, demo = null;
+  let showAll = false, selWard = null;
+  let nextAt = 0, busy = false;
   const colors = new Map();
   const rowEls = new Map();
   const tileEls = new Map();
@@ -286,62 +307,13 @@
       const r = await fetch(FEED + '?_=' + Date.now(), { cache:'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const j = await r.json();
-      if (mode !== 'live') return;
       ingest(j);
       setStatus('live');
     } catch (e) {
-      if (mode === 'live') setStatus('error', e);
+      setStatus('error', e);
     } finally {
       btn.classList.remove('spin');
     }
-  }
-
-  // ---------- Demo ----------
-  function rand(seed) { let x = Math.sin(seed) * 10000; return x - Math.floor(x); }
-  function demoInit() {
-    demo = WARDS.map(([num, name, polls, tv]) => {
-      const w = DEMO_WEIGHTS.map((b, i) => b * Math.exp((rand(num * 31 + i * 7) - .5) * 1.1));
-      const t = w.reduce((a, b) => a + b, 0);
-      return { num, name, polls, tv, done:0, weights:w.map(x => x / t), votes:DEMO_NAMES.map(() => 0) };
-    });
-  }
-  function demoStep() {
-    for (const w of demo) {
-      const add = Math.min(w.polls - w.done, Math.floor(Math.random() * Math.ceil(w.polls * .14)));
-      for (let p = 0; p < add; p++) {
-        const v = w.tv / w.polls * (.3 + Math.random() * .15);
-        w.weights.forEach((wt, i) => w.votes[i] += Math.round(v * wt * (.8 + Math.random() * .4)));
-      }
-      w.done += add;
-    }
-    const totals = DEMO_NAMES.map((_, i) => demo.reduce((a, w) => a + w.votes[i], 0));
-    const votes = totals.reduce((a, b) => a + b, 0);
-    return {
-      electionDesc: '2026 Municipal Election (demo)',
-      seq: String(Date.now()),
-      office: {
-        name:'Mayor',
-        polls: String(demo.reduce((a, w) => a + w.polls, 0)),
-        pollsReceived: String(demo.reduce((a, w) => a + w.done, 0)),
-        totalVoters: String(demo.reduce((a, w) => a + w.tv, 0)),
-        votesReceived: String(votes),
-        candidate: DEMO_NAMES.map((name, i) => ({
-          name, votesReceived: String(totals[i]),
-          ward: demo.map(w => ({ name:w.name, num:String(w.num), polls:String(w.polls), pollsReceived:String(w.done), totalVoters:String(w.tv), votesCounted:String(w.votes.reduce((a, b) => a + b, 0)), votesReceived:String(w.votes[i]) }))
-        }))
-      }
-    };
-  }
-
-  function resetView() {
-    state = null; lastSeq = null; prevVotes = new Map(); colors.clear();
-    rowEls.clear(); $('#board').innerHTML = ''; selWard = null;
-  }
-  function setMode(m) {
-    mode = m; resetView();
-    if (m === 'demo') { demoInit(); setStatus('demo'); }
-    else setStatus('connecting');
-    nextAt = 0; tick();
   }
 
   // ---------- Status ----------
@@ -350,19 +322,41 @@
     dot.className = 'dot'; b.className = 'banner';
     if (kind === 'live') { label.textContent = 'Live'; }
     else if (kind === 'connecting') { label.textContent = 'Connecting…'; }
-    else if (kind === 'demo') {
-      dot.classList.add('demo'); label.textContent = 'Demo data';
-      b.classList.add('show', 'demo');
-      $('#bannerText').textContent = 'Showing simulated results with fictional candidates so you can preview the board in motion.';
-      $('#bannerBtn').textContent = 'Back to live feed';
-      $('#bannerBtn').onclick = () => setMode('live');
-    } else {
+    else {
       dot.classList.add('err'); label.textContent = 'Feed unreachable';
       b.classList.add('show', 'err');
       $('#bannerText').textContent = `Couldn't load the results feed (${err && err.message || 'network error'}). ` +
-        (state ? 'Showing the last successful update; retrying automatically.' : 'If you opened this file directly from disk, your browser may be blocking the cross-origin request. Retrying automatically.');
-      $('#bannerBtn').textContent = 'Preview with demo data';
-      $('#bannerBtn').onclick = () => setMode('demo');
+        (state ? 'Showing the last successful update; retrying automatically.' : 'Retrying automatically.');
+    }
+  }
+
+  // ---------- Empty state ----------
+  const closeTime = POLLS_CLOSE.toLocaleTimeString('en-CA', { timeZone:TZ, hour:'numeric', minute:'2-digit' });
+  const closeDay = POLLS_CLOSE.toLocaleDateString('en-CA', { timeZone:TZ, weekday:'long', month:'long', day:'numeric' });
+  const dayKey = d => d.toLocaleDateString('en-CA', { timeZone:TZ });
+  function hms(ms) {
+    const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`;
+  }
+  function renderEmpty() {
+    const box = $('#empty');
+    const waiting = !state || (state.sum === 0 && state.pollsReceived === 0);
+    box.classList.toggle('show', waiting);
+    if (!waiting) return;
+    const now = new Date(), left = POLLS_CLOSE - now;
+    if (left > 0) {
+      const today = dayKey(now) === dayKey(POLLS_CLOSE);
+      $('#emptyKicker').textContent = 'Waiting for first results';
+      $('#emptyTitle').textContent = `Polls start reporting at ${closeTime}${today ? ' tonight' : ` on ${closeDay}`}`;
+      $('#emptyText').textContent = `Voting places are open until ${closeTime}. Unofficial results begin posting once they close, and this page checks for new numbers every minute.`;
+      $('#emptyClock').textContent = hms(left);
+      $('#emptyClockLabel').textContent = 'until polls close';
+    } else {
+      $('#emptyKicker').textContent = 'Counting underway';
+      $('#emptyTitle').textContent = 'Polls are closed — first results any minute';
+      $('#emptyText').textContent = 'Voting places closed at ' + closeTime + '. The first polls will appear here automatically as they report.';
+      $('#emptyClock').textContent = hms(-left);
+      $('#emptyClockLabel').textContent = 'since polls closed';
     }
   }
 
@@ -442,7 +436,7 @@
     }
     $('#toggleAll').textContent = showAll ? 'Show top 10' : `Show all ${s.cands.length} candidates`;
     $('#toggleAll').style.display = s.cands.length > 10 ? '' : 'none';
-    $('#boardHint').textContent = s.sum ? 'Bar length relative to leader' : 'No polls reported yet — the board fills in as results arrive';
+    $('#boardHint').textContent = s.sum ? 'Bar length relative to leader' : 'Alphabetical until results arrive';
   }
 
   function renderDonut(s) {
@@ -531,6 +525,7 @@
   function renderAll() {
     if (!state) return;
     $('#eyebrow').textContent = 'City of Toronto · ' + state.desc;
+    renderEmpty();
     renderStats(state);
     renderBoard(state);
     renderDonut(state);
@@ -543,14 +538,12 @@
   async function tick() {
     if (busy) return;
     busy = true;
-    nextAt = Date.now() + (mode === 'demo' ? DEMO_MS : LIVE_MS);
-    try {
-      if (mode === 'demo') ingest(demoStep());
-      else await loadLive();
-    } finally { busy = false; }
+    nextAt = Date.now() + LIVE_MS;
+    try { await loadLive(); } finally { busy = false; }
   }
 
   setInterval(() => {
+    renderEmpty();
     const left = Math.max(0, nextAt - Date.now());
     const sec = Math.ceil(left / 1000);
     $('#next').textContent = busy ? '…' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;

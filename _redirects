@@ -1,0 +1,2 @@
+# Proxy the City of Toronto results feed through this site so the browser sees a same-origin request (avoids CORS).
+/api/results  https://mediaresults.toronto.ca/results/unofficialresult-wardbyward.json  200!
