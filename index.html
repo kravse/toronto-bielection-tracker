@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toronto Mayor 2026 · Live Results</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e6e8ec; --soft:#eef1f5;
+    --accent:#2563eb; --good:#16a34a; --warn:#d97706; --bad:#dc2626;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0a0c10; --panel:#11141a; --ink:#e7e9ee; --muted:#8a93a5; --line:#1e232c; --soft:#1a1f28; --shadow:none; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1200px;margin:0 auto;padding:32px 20px 56px}
+
+  /* Header */
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:650}
+  h1{font-size:30px;letter-spacing:-.025em;margin:6px 0 0;font-weight:750;line-height:1.1}
+  .status{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--ink);font-weight:650}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--good);animation:pulse 2s infinite}
+  .dot.err{background:var(--bad);animation:none}
+  .dot.demo{background:var(--warn);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}70%{box-shadow:0 0 0 7px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12.5px;transition:background .15s,border-color .15s}
+  button:hover{background:var(--soft)}
+  .icon-btn{display:inline-flex;align-items:center;gap:6px}
+  .icon-btn svg{width:14px;height:14px}
+  .spin svg{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Banner */
+  .banner{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:12px;margin-bottom:14px;font-size:13.5px;border:1px solid}
+  .banner.show{display:flex}
+  .banner.err{background:color-mix(in srgb,var(--bad) 8%,var(--panel));border-color:color-mix(in srgb,var(--bad) 30%,var(--line))}
+  .banner.demo{background:color-mix(in srgb,var(--warn) 9%,var(--panel));border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+
+  /* Cards */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px}
+  .card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+  .card h2{font-size:15px;margin:0;font-weight:680;letter-spacing:-.01em}
+  .hint{color:var(--muted);font-size:12.5px}
+
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
+  .stat .label{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  .stat .val{font-size:28px;font-weight:750;letter-spacing:-.025em;margin-top:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stat .sub{color:var(--muted);font-size:12.5px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .progress{height:6px;background:var(--soft);border-radius:99px;overflow:hidden;margin-top:12px}
+  .progress>i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+
+  .main{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:14px;margin-bottom:14px;align-items:start}
+
+  /* Leaderboard */
+  #board{position:relative}
+  .row{display:grid;grid-template-columns:26px minmax(0,1fr) 96px 58px;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--line);background:var(--panel)}
+  #board .row:first-child{border-top:0}
+  .rank{color:var(--muted);font-weight:650;text-align:center}
+  .row.lead .rank{color:var(--ink)}
+  .name{display:flex;align-items:center;gap:8px;font-weight:620;min-width:0}
+  .name .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sw{width:10px;height:10px;border-radius:3px;flex:none;background:var(--muted)}
+  .chip{display:none;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:99px;color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent);flex:none}
+  .row.lead .chip{display:inline-block}
+  .bar{height:8px;background:var(--soft);border-radius:99px;margin-top:8px;overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;border-radius:99px;transition:width 1s cubic-bezier(.2,.8,.2,1),background .3s}
+  .votes{text-align:right;font-weight:650}
+  .delta{display:block;font-size:11px;color:var(--good);font-weight:650;min-height:15px}
+  .pct{text-align:right;color:var(--muted);font-weight:550}
+  .board-foot{display:flex;justify-content:center;margin-top:12px}
+
+  /* Donut */
+  .donut-wrap{display:flex;justify-content:center;padding:4px 0 14px}
+  .donut-wrap svg{width:220px;height:220px;max-width:100%}
+  .donut-wrap circle.seg{transition:stroke-dasharray .9s cubic-bezier(.2,.8,.2,1),stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
+  .legend{display:flex;flex-direction:column;gap:9px}
+  .legend div{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+  .legend span.n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .legend b{font-weight:650}
+
+  /* Wards */
+  .wards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .tile{--c:var(--line);text-align:left;border-radius:12px;padding:12px 13px 11px;border:1px solid var(--line);
+        background:linear-gradient(180deg,color-mix(in srgb,var(--c) 9%,var(--panel)),var(--panel) 70%);
+        box-shadow:inset 0 3px 0 var(--c);display:flex;flex-direction:column;gap:6px;transition:transform .15s,border-color .15s,box-shadow .2s}
+  .tile:hover{transform:translateY(-1px);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 14%,var(--panel)),var(--panel) 70%)}
+  .tile.sel{border-color:var(--ink)}
+  .t-top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.05em}
+  .t-name{font-weight:650;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t-lead{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);min-height:18px;white-space:nowrap;overflow:hidden}
+  .t-lead b{color:var(--ink);margin-left:auto;font-weight:650}
+  .stack{display:flex;height:6px;border-radius:99px;overflow:hidden;background:var(--soft);gap:1px}
+  .stack i{display:block;height:100%;transition:flex-basis .9s cubic-bezier(.2,.8,.2,1)}
+  .mini{height:3px;border-radius:99px;background:var(--soft);overflow:hidden}
+  .mini i{display:block;height:100%;width:0;background:var(--muted);transition:width .9s}
+
+  #wardDetail{display:none;margin-top:14px}
+  #wardDetail.show{display:block}
+  .wd-stats{display:flex;gap:22px;flex-wrap:wrap;margin:2px 0 10px;color:var(--muted);font-size:12.5px}
+  .wd-stats b{display:block;color:var(--ink);font-size:17px;font-weight:700;letter-spacing:-.01em}
+
+  footer{margin-top:22px;color:var(--muted);font-size:12px;text-align:center}
+  footer a{color:inherit}
+
+  @media (max-width:960px){ .stats{grid-template-columns:repeat(2,minmax(0,1fr))} .main{grid-template-columns:1fr} }
+  @media (max-width:520px){
+    .wrap{padding:22px 16px 40px} h1{font-size:24px}
+    .stat .val{font-size:22px}
+    .row{grid-template-columns:22px minmax(0,1fr) 78px 48px;gap:10px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow" id="eyebrow">City of Toronto · 2026 Municipal Election</div>
+      <h1>Race for Mayor</h1>
+    </div>
+    <div class="status">
+      <span class="pill"><span class="dot" id="dot"></span><b id="modeLabel">Connecting…</b></span>
+      <span class="pill num" id="updated">Not yet updated</span>
+      <span class="pill num">Next in&nbsp;<b id="next">—</b></span>
+      <button class="icon-btn" id="refresh" title="Refresh now">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"><span id="bannerText"></span><button id="bannerBtn"></button></div>
+
+  <section class="stats">
+    <div class="card stat">
+      <div class="label">Polls reporting</div>
+      <div class="val num" id="sPolls">0</div>
+      <div class="sub num" id="sPollsSub">of 0 polls</div>
+      <div class="progress"><i id="sPollsBar"></i></div>
+    </div>
+    <div class="card stat">
+      <div class="label">Votes counted</div>
+      <div class="val num" id="sVotes">0</div>
+      <div class="sub" id="sVotesSub">across all candidates</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Turnout so far</div>
+      <div class="val num" id="sTurnout">0.0%</div>
+      <div class="sub num" id="sTurnoutSub">of eligible voters</div>
+      <div class="progress"><i id="sTurnoutBar" style="background:var(--good)"></i></div>
+    </div>
+    <div class="card stat">
+      <div class="label">Leading</div>
+      <div class="val" id="sLeader">—</div>
+      <div class="sub num" id="sLeaderSub">Awaiting results</div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div class="card">
+      <div class="card-head">
+        <h2>Leaderboard</h2>
+        <span class="hint" id="boardHint"></span>
+      </div>
+      <div id="board"></div>
+      <div class="board-foot"><button id="toggleAll">Show all</button></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Vote share</h2><span class="hint">Top 5 + others</span></div>
+      <div class="donut-wrap" id="donut"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Ward by ward</h2>
+      <span class="hint">Colour = ward leader · tap a ward for details</span>
+    </div>
+    <div class="wards" id="wards"></div>
+    <div id="wardDetail"></div>
+  </section>
+
+  <footer>
+    Unofficial results from the <a href="https://mediaresults.toronto.ca/results/unofficialresult-wardbyward.json" target="_blank" rel="noopener">City of Toronto feed</a> · refreshes every 60 seconds · <span id="seq" class="num"></span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const FEED = 'https://mediaresults.toronto.ca/results/unofficialresult-wardbyward.json';
+  const LIVE_MS = 60000;
+  const DEMO_MS = 5000;
+  const PALETTE = ['#2563eb','#e11d48','#059669','#f59e0b','#7c3aed','#0891b2','#db2777','#65a30d'];
+  const GRAY = '#94a3b8';
+
+  // Ward metadata for demo mode: [num, name, polls, totalVoters]
+  const WARDS = [[1,'Etobicoke North',46,78411],[2,'Etobicoke Centre',67,97554],[3,'Etobicoke-Lakeshore',82,116485],[4,'Parkdale-High Park',67,88529],[5,'York South-Weston',62,83515],[6,'York Centre',50,79015],[7,'Humber River-Black Creek',45,73832],[8,'Eglinton-Lawrence',61,89581],[9,'Davenport',53,84706],[10,'Spadina-Fort York',80,123597],[11,'University-Rosedale',72,90868],[12,"Toronto-St. Paul's",58,95032],[13,'Toronto Centre',78,101769],[14,'Toronto-Danforth',48,85786],[15,'Don Valley West',49,76936],[16,'Don Valley East',62,70080],[17,'Don Valley North',60,81623],[18,'Willowdale',56,84671],[19,'Beaches-East York',53,85048],[20,'Scarborough Southwest',61,82427],[21,'Scarborough Centre',49,80557],[22,'Scarborough-Agincourt',47,75224],[23,'Scarborough North',37,66760],[24,'Scarborough-Guildwood',48,72345],[25,'Scarborough-Rouge Park',40,79420]];
+  // Fictional names so demo numbers can never be mistaken for real results
+  const DEMO_NAMES = ['Avery Lindqvist','Marcus Oyelaran','Priya Ramaswamy','Theo Castellanos','Dana Whitfield','Kenji Arakawa','Sofia Marchetti','Rowan Ellery','Imogen Batista','Felix Achterberg','Nadia Kowalczyk','Owen Pritchard'];
+  const DEMO_WEIGHTS = [.34,.30,.13,.08,.045,.03,.02,.015,.012,.01,.008,.006];
+
+  const $ = s => document.querySelector(s);
+  const fmt = n => Math.round(n).toLocaleString('en-CA');
+  const pct = (a, b) => b > 0 ? a / b * 100 : 0;
+  const fp = v => v.toFixed(1) + '%';
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let state = null, lastSeq = null, prevVotes = new Map();
+  let mode = 'live', showAll = false, selWard = null;
+  let nextAt = 0, busy = false, demo = null;
+  const colors = new Map();
+  const rowEls = new Map();
+  const tileEls = new Map();
+
+  // ---------- Data ----------
+  function parse(j) {
+    const o = j.office || {};
+    const list = o.candidate || [];
+    const wardMap = new Map();
+    for (const c of list) for (const w of (c.ward || [])) {
+      const n = +w.num;
+      if (!wardMap.has(n)) wardMap.set(n, { num:n, name:w.name, polls:+w.polls||0, pollsReceived:+w.pollsReceived||0, totalVoters:+w.totalVoters||0, votesCounted:+w.votesCounted||0, votes:new Map() });
+      wardMap.get(n).votes.set(c.name, +w.votesReceived || 0);
+    }
+    const cands = list.map(c => ({ name:c.name, votes:+c.votesReceived || 0 }))
+      .sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
+    const sum = cands.reduce((a, c) => a + c.votes, 0);
+    const wards = [...wardMap.values()].sort((a, b) => a.num - b.num);
+    for (const w of wards) {
+      w.ranked = [...w.votes].map(([name, votes]) => ({ name, votes }))
+        .sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
+      w.sum = w.ranked.reduce((a, c) => a + c.votes, 0);
+    }
+    const wardPolls = wards.reduce((a, w) => a + w.polls, 0);
+    const wardRecv = wards.reduce((a, w) => a + w.pollsReceived, 0);
+    return {
+      desc: j.electionDesc || 'Municipal Election',
+      polls: +o.polls || wardPolls,
+      pollsReceived: Math.max(+o.pollsReceived || 0, wardRecv),
+      totalVoters: +o.totalVoters || wards.reduce((a, w) => a + w.totalVoters, 0),
+      votesReceived: Math.max(+o.votesReceived || 0, sum),
+      sum, cands, wards, seq: j.seq
+    };
+  }
+
+  function colorOf(name) {
+    return colors.get(name) || GRAY;
+  }
+  function assignColors(s) {
+    if (!s.sum) return;
+    const used = new Set(colors.values());
+    s.cands.slice(0, PALETTE.length).forEach(c => {
+      if (c.votes > 0 && !colors.has(c.name)) {
+        const free = PALETTE.find(p => !used.has(p));
+        if (free) { colors.set(c.name, free); used.add(free); }
+      }
+    });
+  }
+
+  function ingest(j) {
+    const s = parse(j);
+    const changed = lastSeq != null && s.seq !== lastSeq;
+    if (!changed && state && s.seq === lastSeq) {
+      const old = new Map(state.cands.map(c => [c.name, c.delta]));
+      s.cands.forEach(c => c.delta = old.get(c.name) || 0);
+    } else {
+      s.cands.forEach(c => c.delta = changed && prevVotes.has(c.name) ? c.votes - prevVotes.get(c.name) : 0);
+    }
+    if (s.seq !== lastSeq) { prevVotes = new Map(s.cands.map(c => [c.name, c.votes])); lastSeq = s.seq; }
+    assignColors(s);
+    state = s;
+    renderAll();
+    $('#updated').innerHTML = 'Updated <b>' + new Date().toLocaleTimeString('en-CA', { hour:'numeric', minute:'2-digit', second:'2-digit' }) + '</b>';
+  }
+
+  async function loadLive() {
+    const btn = $('#refresh'); btn.classList.add('spin');
+    try {
+      const r = await fetch(FEED + '?_=' + Date.now(), { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      if (mode !== 'live') return;
+      ingest(j);
+      setStatus('live');
+    } catch (e) {
+      if (mode === 'live') setStatus('error', e);
+    } finally {
+      btn.classList.remove('spin');
+    }
+  }
+
+  // ---------- Demo ----------
+  function rand(seed) { let x = Math.sin(seed) * 10000; return x - Math.floor(x); }
+  function demoInit() {
+    demo = WARDS.map(([num, name, polls, tv]) => {
+      const w = DEMO_WEIGHTS.map((b, i) => b * Math.exp((rand(num * 31 + i * 7) - .5) * 1.1));
+      const t = w.reduce((a, b) => a + b, 0);
+      return { num, name, polls, tv, done:0, weights:w.map(x => x / t), votes:DEMO_NAMES.map(() => 0) };
+    });
+  }
+  function demoStep() {
+    for (const w of demo) {
+      const add = Math.min(w.polls - w.done, Math.floor(Math.random() * Math.ceil(w.polls * .14)));
+      for (let p = 0; p < add; p++) {
+        const v = w.tv / w.polls * (.3 + Math.random() * .15);
+        w.weights.forEach((wt, i) => w.votes[i] += Math.round(v * wt * (.8 + Math.random() * .4)));
+      }
+      w.done += add;
+    }
+    const totals = DEMO_NAMES.map((_, i) => demo.reduce((a, w) => a + w.votes[i], 0));
+    const votes = totals.reduce((a, b) => a + b, 0);
+    return {
+      electionDesc: '2026 Municipal Election (demo)',
+      seq: String(Date.now()),
+      office: {
+        name:'Mayor',
+        polls: String(demo.reduce((a, w) => a + w.polls, 0)),
+        pollsReceived: String(demo.reduce((a, w) => a + w.done, 0)),
+        totalVoters: String(demo.reduce((a, w) => a + w.tv, 0)),
+        votesReceived: String(votes),
+        candidate: DEMO_NAMES.map((name, i) => ({
+          name, votesReceived: String(totals[i]),
+          ward: demo.map(w => ({ name:w.name, num:String(w.num), polls:String(w.polls), pollsReceived:String(w.done), totalVoters:String(w.tv), votesCounted:String(w.votes.reduce((a, b) => a + b, 0)), votesReceived:String(w.votes[i]) }))
+        }))
+      }
+    };
+  }
+
+  function resetView() {
+    state = null; lastSeq = null; prevVotes = new Map(); colors.clear();
+    rowEls.clear(); $('#board').innerHTML = ''; selWard = null;
+  }
+  function setMode(m) {
+    mode = m; resetView();
+    if (m === 'demo') { demoInit(); setStatus('demo'); }
+    else setStatus('connecting');
+    nextAt = 0; tick();
+  }
+
+  // ---------- Status ----------
+  function setStatus(kind, err) {
+    const dot = $('#dot'), label = $('#modeLabel'), b = $('#banner');
+    dot.className = 'dot'; b.className = 'banner';
+    if (kind === 'live') { label.textContent = 'Live'; }
+    else if (kind === 'connecting') { label.textContent = 'Connecting…'; }
+    else if (kind === 'demo') {
+      dot.classList.add('demo'); label.textContent = 'Demo data';
+      b.classList.add('show', 'demo');
+      $('#bannerText').textContent = 'Showing simulated results with fictional candidates so you can preview the board in motion.';
+      $('#bannerBtn').textContent = 'Back to live feed';
+      $('#bannerBtn').onclick = () => setMode('live');
+    } else {
+      dot.classList.add('err'); label.textContent = 'Feed unreachable';
+      b.classList.add('show', 'err');
+      $('#bannerText').textContent = `Couldn't load the results feed (${err && err.message || 'network error'}). ` +
+        (state ? 'Showing the last successful update; retrying automatically.' : 'If you opened this file directly from disk, your browser may be blocking the cross-origin request. Retrying automatically.');
+      $('#bannerBtn').textContent = 'Preview with demo data';
+      $('#bannerBtn').onclick = () => setMode('demo');
+    }
+  }
+
+  // ---------- Rendering ----------
+  function tween(el, to, f) {
+    const from = +el.dataset.v || 0; el.dataset.v = to;
+    if (from === to) { el.textContent = f(to); return; }
+    const t0 = performance.now(), dur = 800;
+    const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = f(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+
+  function renderStats(s) {
+    tween($('#sPolls'), s.pollsReceived, fmt);
+    const rep = pct(s.pollsReceived, s.polls);
+    $('#sPollsSub').textContent = `of ${fmt(s.polls)} polls · ${fp(rep)}`;
+    $('#sPollsBar').style.width = rep + '%';
+    tween($('#sVotes'), s.sum, fmt);
+    $('#sVotesSub').textContent = `${s.cands.length} candidates on the ballot`;
+    const to = pct(s.votesReceived, s.totalVoters);
+    tween($('#sTurnout'), to, fp);
+    $('#sTurnoutSub').textContent = `of ${fmt(s.totalVoters)} eligible voters`;
+    $('#sTurnoutBar').style.width = Math.min(100, to) + '%';
+    const [a, b] = s.cands;
+    if (s.sum > 0 && a) {
+      $('#sLeader').innerHTML = `<span class="sw" style="display:inline-block;vertical-align:middle;margin:-3px 8px 0 0;width:12px;height:12px;background:${colorOf(a.name)}"></span>${esc(a.name)}`;
+      const m = a.votes - (b ? b.votes : 0);
+      $('#sLeaderSub').textContent = b ? `+${fmt(m)} votes · ${(pct(a.votes, s.sum) - pct(b.votes, s.sum)).toFixed(1)} pts over ${b.name}` : fp(pct(a.votes, s.sum));
+    } else {
+      $('#sLeader').textContent = '—';
+      $('#sLeaderSub').textContent = 'Awaiting first results';
+    }
+  }
+
+  function renderBoard(s) {
+    const box = $('#board');
+    const leader = s.cands[0] ? s.cands[0].votes : 0;
+    const visible = showAll ? s.cands : s.cands.slice(0, 10);
+    const first = new Map();
+    for (const [n, el] of rowEls) if (el.isConnected) first.set(n, el.getBoundingClientRect().top);
+    const keep = new Set(visible.map(c => c.name));
+    for (const [n, el] of rowEls) if (!keep.has(n)) el.remove();
+
+    visible.forEach((c, i) => {
+      let el = rowEls.get(c.name);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'row';
+        el.innerHTML = '<div class="rank num"></div><div><div class="name"><span class="sw"></span><span class="nm"></span><span class="chip">Leading</span></div><div class="bar"><i></i></div></div><div class="votes num"><span class="v"></span><span class="delta"></span></div><div class="pct num"></div>';
+        el.querySelector('.nm').textContent = c.name;
+        rowEls.set(c.name, el);
+      }
+      const col = s.sum ? colorOf(c.name) : GRAY;
+      el.querySelector('.rank').textContent = i + 1;
+      el.querySelector('.sw').style.background = col;
+      const bar = el.querySelector('.bar>i');
+      bar.style.background = col;
+      bar.style.width = (leader ? c.votes / leader * 100 : 0) + '%';
+      el.querySelector('.v').textContent = fmt(c.votes);
+      el.querySelector('.delta').textContent = c.delta > 0 ? '+' + fmt(c.delta) : '';
+      el.querySelector('.pct').textContent = s.sum ? fp(pct(c.votes, s.sum)) : '—';
+      el.classList.toggle('lead', i === 0 && s.sum > 0);
+      box.appendChild(el);
+    });
+
+    // FLIP animation for rank changes
+    for (const c of visible) {
+      const el = rowEls.get(c.name), f = first.get(c.name);
+      if (f == null) continue;
+      const dy = f - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${dy}px)`;
+      el.offsetHeight;
+      el.style.transition = 'transform .7s cubic-bezier(.2,.8,.2,1)';
+      el.style.transform = '';
+    }
+    $('#toggleAll').textContent = showAll ? 'Show top 10' : `Show all ${s.cands.length} candidates`;
+    $('#toggleAll').style.display = s.cands.length > 10 ? '' : 'none';
+    $('#boardHint').textContent = s.sum ? 'Bar length relative to leader' : 'No polls reported yet — the board fills in as results arrive';
+  }
+
+  function renderDonut(s) {
+    const R = 82, C = 2 * Math.PI * R, cx = 110;
+    const top = s.cands.slice(0, 5).filter(c => c.votes > 0);
+    const other = s.sum - top.reduce((a, c) => a + c.votes, 0);
+    const segs = top.map(c => ({ name:c.name, votes:c.votes, color:colorOf(c.name) }));
+    if (other > 0) segs.push({ name:'All others', votes:other, color:GRAY });
+    const gap = segs.length > 1 ? 3 : 0;
+    let off = 0, arcs = '';
+    for (const g of segs) {
+      const len = g.votes / s.sum * C;
+      arcs += `<circle class="seg" r="${R}" cx="${cx}" cy="${cx}" fill="none" stroke="${g.color}" stroke-width="24" stroke-dasharray="${Math.max(0, len - gap)} ${C}" stroke-dashoffset="${-off}"/>`;
+      off += len;
+    }
+    const lead = s.cands[0];
+    const center = s.sum
+      ? `<text x="${cx}" y="${cx - 2}" text-anchor="middle" font-size="30" font-weight="750" fill="currentColor" style="font-variant-numeric:tabular-nums">${fp(pct(lead.votes, s.sum))}</text>
+         <text x="${cx}" y="${cx + 22}" text-anchor="middle" font-size="12" fill="var(--muted)">${esc(lead.name.split(' ').slice(-1)[0])} leads</text>`
+      : `<text x="${cx}" y="${cx + 5}" text-anchor="middle" font-size="13" fill="var(--muted)">Awaiting results</text>`;
+    $('#donut').innerHTML = `<svg viewBox="0 0 220 220" style="color:var(--ink)"><circle r="${R}" cx="${cx}" cy="${cx}" fill="none" stroke="var(--soft)" stroke-width="24"/><g transform="rotate(-90 ${cx} ${cx})">${arcs}</g>${center}</svg>`;
+    $('#legend').innerHTML = segs.length
+      ? segs.map(g => `<div><span class="sw" style="background:${g.color}"></span><span class="n">${esc(g.name)}</span><b class="num">${fp(pct(g.votes, s.sum))}</b></div>`).join('')
+      : `<div style="grid-template-columns:1fr;color:var(--muted);text-align:center">Shares appear once votes are counted.</div>`;
+  }
+
+  function renderWards(s) {
+    const grid = $('#wards');
+    for (const w of s.wards) {
+      let el = tileEls.get(w.num);
+      if (!el) {
+        el = document.createElement('button');
+        el.className = 'tile';
+        el.innerHTML = '<div class="t-top"><span class="t-num"></span><span class="t-rep num"></span></div><div class="t-name"></div><div class="t-lead"></div><div class="stack"></div><div class="mini"><i></i></div>';
+        el.addEventListener('click', () => { selWard = selWard === w.num ? null : w.num; renderWards(state); renderWardDetail(state); if (selWard) $('#wardDetail').scrollIntoView({ behavior:'smooth', block:'nearest' }); });
+        grid.appendChild(el);
+        tileEls.set(w.num, el);
+      }
+      const rep = pct(w.pollsReceived, w.polls);
+      el.querySelector('.t-num').textContent = 'Ward ' + w.num;
+      el.querySelector('.t-rep').textContent = Math.round(rep) + '% in';
+      el.querySelector('.t-name').textContent = w.name;
+      const L = w.ranked[0], lead = el.querySelector('.t-lead');
+      if (w.sum > 0) {
+        const col = colorOf(L.name);
+        el.style.setProperty('--c', col);
+        lead.innerHTML = `<span class="sw" style="background:${col}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(L.name)}</span><b class="num">${fp(pct(L.votes, w.sum))}</b>`;
+      } else {
+        el.style.setProperty('--c', 'var(--line)');
+        lead.textContent = 'Awaiting results';
+      }
+      const top3 = w.ranked.slice(0, 3).filter(c => c.votes > 0);
+      const rest = w.sum - top3.reduce((a, c) => a + c.votes, 0);
+      el.querySelector('.stack').innerHTML = w.sum
+        ? top3.map(c => `<i style="flex:0 0 ${pct(c.votes, w.sum)}%;background:${colorOf(c.name)}"></i>`).join('') + (rest > 0 ? `<i style="flex:1 1 auto;background:${GRAY};opacity:.5"></i>` : '')
+        : '';
+      el.querySelector('.mini i').style.width = rep + '%';
+      el.classList.toggle('sel', selWard === w.num);
+      el.title = `${w.name}: ${w.pollsReceived}/${w.polls} polls reporting`;
+    }
+  }
+
+  function renderWardDetail(s) {
+    const box = $('#wardDetail');
+    const w = selWard && s.wards.find(x => x.num === selWard);
+    if (!w) { box.className = ''; box.innerHTML = ''; return; }
+    box.className = 'show';
+    const counted = Math.max(w.votesCounted, w.sum);
+    const top = w.ranked[0] ? w.ranked[0].votes : 0;
+    const rows = w.ranked.slice(0, 10).map((c, i) => {
+      const col = w.sum ? colorOf(c.name) : GRAY;
+      return `<div class="row${i === 0 && w.sum ? ' lead' : ''}"><div class="rank num">${i + 1}</div><div><div class="name"><span class="sw" style="background:${col}"></span><span class="nm">${esc(c.name)}</span><span class="chip">Leading</span></div><div class="bar"><i style="width:${top ? c.votes / top * 100 : 0}%;background:${col}"></i></div></div><div class="votes num"><span>${fmt(c.votes)}</span><span class="delta"></span></div><div class="pct num">${w.sum ? fp(pct(c.votes, w.sum)) : '—'}</div></div>`;
+    }).join('');
+    box.innerHTML = `<div class="card" style="box-shadow:none;background:var(--bg)">
+      <div class="card-head"><h2>Ward ${w.num} · ${esc(w.name)}</h2><button id="wdClose">Close</button></div>
+      <div class="wd-stats">
+        <div><b class="num">${fmt(w.pollsReceived)} / ${fmt(w.polls)}</b>polls reporting</div>
+        <div><b class="num">${fmt(counted)}</b>votes counted</div>
+        <div><b class="num">${fp(pct(counted, w.totalVoters))}</b>turnout of ${fmt(w.totalVoters)}</div>
+      </div>
+      <div>${rows}</div>
+    </div>`;
+    $('#wdClose').onclick = () => { selWard = null; renderWards(state); renderWardDetail(state); };
+  }
+
+  function renderAll() {
+    if (!state) return;
+    $('#eyebrow').textContent = 'City of Toronto · ' + state.desc;
+    renderStats(state);
+    renderBoard(state);
+    renderDonut(state);
+    renderWards(state);
+    renderWardDetail(state);
+    $('#seq').textContent = state.seq ? 'seq ' + state.seq : '';
+  }
+
+  // ---------- Scheduling ----------
+  async function tick() {
+    if (busy) return;
+    busy = true;
+    nextAt = Date.now() + (mode === 'demo' ? DEMO_MS : LIVE_MS);
+    try {
+      if (mode === 'demo') ingest(demoStep());
+      else await loadLive();
+    } finally { busy = false; }
+  }
+
+  setInterval(() => {
+    const left = Math.max(0, nextAt - Date.now());
+    const sec = Math.ceil(left / 1000);
+    $('#next').textContent = busy ? '…' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    if (left <= 0 && !document.hidden) tick();
+  }, 250);
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() >= nextAt) tick(); });
+  $('#refresh').onclick = () => tick();
+  $('#toggleAll').onclick = () => { showAll = !showAll; renderBoard(state); };
+
+  setStatus('connecting');
+  tick();
+})();
+</script>
+</body>
+</html>
