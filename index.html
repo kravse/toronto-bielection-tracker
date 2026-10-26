@@ -916,7 +916,10 @@
     const tie = tiedAtTop(s.cands);
     const rankOf = new Map(s.cands.map((c, i) => [c.name, i]));
     // Top N, plus any pinned candidate wherever they rank
-    const visible = showAll ? s.cands : s.cands.filter((c, i) => i < TOP_N || pinnedCands.has(c.name));
+    // Pinned candidates first (in vote order), then the top N of everyone else. Rank numbers stay real.
+    const pinnedList = s.cands.filter(c => pinnedCands.has(c.name));
+    const rest = s.cands.filter(c => !pinnedCands.has(c.name));
+    const visible = [...pinnedList, ...(showAll ? rest : rest.slice(0, TOP_N))];
     const first = new Map();
     for (const [n, el] of rowEls) if (el.isConnected) first.set(n, el.getBoundingClientRect().top);
     const keep = new Set(visible.map(c => c.name));
@@ -932,15 +935,15 @@
         el.querySelector('.cpin-slot').outerHTML = CPIN(c.name);
         rowEls.set(c.name, el);
       }
-      const rank = rankOf.get(c.name), prev = i > 0 ? rankOf.get(visible[i - 1].name) : -1;
+      const rank = rankOf.get(c.name);
       const isPinned = pinnedCands.has(c.name);
       el.classList.toggle('cpinned', isPinned);
-      el.classList.toggle('gap', rank - prev > 1);           // dashed divider where ranks are skipped
+      el.classList.toggle('gap', pinnedList.length > 0 && i === pinnedList.length);   // divider between pinned and the rest
       const pinBtn = el.querySelector('.cpin');
       pinBtn.setAttribute('aria-pressed', isPinned);
       pinBtn.setAttribute('aria-label', `${isPinned ? 'Unpin' : 'Pin'} ${c.name}`);
       const col = s.sum ? colorOf(c.name) : GRAY;
-      el.querySelector('.rank').textContent = rank + 1;
+      el.querySelector('.rank').textContent = s.sum ? rank + 1 : '';   // no ranks until there are votes
       el.querySelector('.sw').style.background = col;
       const bar = el.querySelector('.bar>i');
       bar.style.background = col;
@@ -948,7 +951,7 @@
       el.querySelector('.v').textContent = fmt(c.votes);
       el.querySelector('.delta').textContent = c.delta > 0 ? '+' + fmt(c.delta) : '';
       el.querySelector('.pct').textContent = s.sum ? fp(pct(c.votes, s.sum)) : '—';
-      const atTop = s.sum > 0 && c.votes === leader && (i === 0 || tie);
+      const atTop = s.sum > 0 && c.votes === leader && (rank === 0 || tie);
       el.classList.toggle('lead', atTop);
       el.querySelector('.chip').textContent = tie ? 'Tied' : 'Leading';
       box.appendChild(el);
@@ -1058,7 +1061,7 @@
   function detailRow(c, i, w, top, gap = false) {
     const col = w.sum ? colorOf(c.name) : GRAY;
     const tie = tiedAtTop(w.ranked), atTop = w.sum > 0 && c.votes === top && (i === 0 || tie);
-    return `<div class="row${atTop ? ' lead' : ''}${pinnedCands.has(c.name) ? ' cpinned' : ''}${gap ? ' gap' : ''}"><div class="rank num">${i + 1}</div><div class="name"><span class="sw" style="background:${col}"></span><span class="nm">${nameHTML(c.name)}</span><span class="chip">${tiedAtTop(w.ranked) ? 'Tied' : 'Leading'}</span>${CPIN(c.name)}</div><div class="bar"><i style="width:${top ? c.votes / top * 100 : 0}%;background:${col}"></i></div><div class="v num">${fmt(c.votes)}</div><div class="meta"><span class="delta"></span><span class="pct num">${w.sum ? fp(pct(c.votes, w.sum)) : '—'}</span></div></div>`;
+    return `<div class="row${atTop ? ' lead' : ''}${pinnedCands.has(c.name) ? ' cpinned' : ''}${gap ? ' gap' : ''}"><div class="rank num">${w.sum ? i + 1 : ''}</div><div class="name"><span class="sw" style="background:${col}"></span><span class="nm">${nameHTML(c.name)}</span><span class="chip">${tiedAtTop(w.ranked) ? 'Tied' : 'Leading'}</span>${CPIN(c.name)}</div><div class="bar"><i style="width:${top ? c.votes / top * 100 : 0}%;background:${col}"></i></div><div class="v num">${fmt(c.votes)}</div><div class="meta"><span class="delta"></span><span class="pct num">${w.sum ? fp(pct(c.votes, w.sum)) : '—'}</span></div></div>`;
   }
 
   function renderWardDetail(s) {
@@ -1082,9 +1085,13 @@
         <div><b class="num">${fmt(counted)}</b>votes counted</div>
         <div><b class="num">${fp(pct(counted, w.totalVoters))}</b>turnout</div>
       </div>
-      <div class="wd-rows">${w.ranked.map((c, i) => [c, i]).filter(([c, i]) => i < 10 || pinnedCands.has(c.name))
-          .map(([c, i], k, arr) => detailRow(c, i, w, top, k > 0 && i - arr[k - 1][1] > 1)).join('')}</div>
-      ${w.ranked.length > 10 ? `<div class="wd-more">Top 10${[...pinnedCands].some(n => w.votes.has(n) && w.ranked.findIndex(c => c.name === n) >= 10) ? ' + pinned' : ''} of ${w.ranked.length} candidates in this ward</div>` : ''}`;
+      <div class="wd-rows">${(() => {
+        // Same rule as the leaderboard: pinned first, then this ward's top 10 of everyone else
+        const ix = w.ranked.map((c, i) => [c, i]);
+        const pin = ix.filter(([c]) => pinnedCands.has(c.name)), rest = ix.filter(([c]) => !pinnedCands.has(c.name)).slice(0, 10);
+        return [...pin, ...rest].map(([c, i], k) => detailRow(c, i, w, top, pin.length > 0 && k === pin.length)).join('');
+      })()}</div>
+      ${w.ranked.length > 10 ? `<div class="wd-more">${w.ranked.some(c => pinnedCands.has(c.name)) ? 'Pinned + top 10' : 'Top 10'} of ${w.ranked.length} candidates in this ward</div>` : ''}`;
     box.scrollTop = keepScroll;
     $('#wdClose').onclick = closeWard;
   }
