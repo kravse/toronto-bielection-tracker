@@ -1,2 +1,5 @@
-# Proxy the City of Toronto results feed through this site so the browser sees a same-origin request (avoids CORS).
+# Proxy the City of Toronto results feeds through this site so the browser sees same-origin requests (avoids CORS).
+# Mayor, ward by ward:
 /api/results  https://mediaresults.toronto.ca/results/unofficialresult-wardbyward.json  200!
+# Every race (council, school boards, mayor city-wide):
+/api/races    https://mediaresults.toronto.ca/results/unofficialresult.json  200!
